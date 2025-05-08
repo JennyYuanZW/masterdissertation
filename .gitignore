@@ -8,3 +8,9 @@ venv/ env/
 # OS & editors
 .DS_Store Thumbs.db
 .vscode/ *~ *.swp
+
+# Data
+adata_balanced.h5ad
+
+#logs
+training_log_rf.txt
