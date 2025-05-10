@@ -1,6 +1,7 @@
 # Python
-feature_selection/__pycache__/
+src/feature_selection/__pycache__/
 venv/ env/
+src/causal_discovery/__pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
