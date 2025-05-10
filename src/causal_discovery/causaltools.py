@@ -1,0 +1,155 @@
+import pandas as pd
+import anndata as ad
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import os
+from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
+from causallearn.utils.GraphUtils import GraphUtils
+from causallearn.graph.GraphNode import GraphNode
+from graphviz import Digraph
+
+gv_path = r"C:\Users\jenny\windows_10_cmake_Release_Graphviz-12.2.1-win32\Graphviz-12.2.1-win32\bin"
+os.environ["PATH"] += os.pathsep + gv_path
+
+
+class CausalDiscovery:
+    def __init__(
+        self,
+        adata_path: str,
+        gene_file: str,
+        response_col: str = "group",
+        output_folder: str = ".",
+        bk=None,
+    ):
+        self.adata_path = adata_path
+        self.gene_file = gene_file
+        self.response_col = response_col
+        self.out_dir = output_folder
+        os.makedirs(self.out_dir, exist_ok=True)
+
+        self.adata = ad.read_h5ad(self.adata_path)
+
+        # subset by selected genes + build df
+        self.load_genes()
+        self.build_dataframe()
+
+        # prepare background knowledge
+        self.bk = bk
+        self.build_background_knowledge()
+
+    def load_genes(self):
+        try:
+            with open(self.gene_file) as f:
+                self.genes = [g.strip() for g in f if g.strip()]
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Gene file not found: {self.gene_file}")
+
+    def build_dataframe(self):
+        # full data matrix
+        df = pd.DataFrame(
+            (
+                self.adata.X.toarray()
+                if hasattr(self.adata.X, "toarray")
+                else self.adata.X
+            ),
+            index=self.adata.obs_names,
+            columns=self.adata.var_names,
+        )
+        # subset to only selected genes, drop all-zero cols
+        df = df[self.genes]
+        df = df.loc[:, (df != 0).any(axis=0)]
+
+        resp = np.where(self.adata.obs[self.response_col] == "disease", 1, 0)
+        df[self.response_col] = resp
+
+        self.var_names = sorted(
+            df.drop(columns=[self.response_col]).columns.tolist()
+        )
+        self.data_matrix = df[self.var_names].values
+
+    def build_background_knowledge(self):
+        group_node = GraphNode(self.response_col)
+        self.nodes = [GraphNode(name) for name in self.var_names]
+        for n in self.nodes:
+            self.bk.add_forbidden_by_node(n, group_node)
+
+    def run(
+        self,
+        method_func,
+        method_kwargs: dict = None,
+    ):
+
+        kwargs = method_kwargs or {}
+        # include the default arguments
+        kwargs.update(
+            {
+                "data": self.data_matrix,
+                "background_knowledge": self.bk,
+            }
+        )
+        # call the causal method, unpack kwargs
+        self.cg = method_func(**kwargs)
+        Gnx = self.convert_to_nx()
+        self.plot_graphviz(Gnx, edge_labels=None)
+        return self.cg
+
+    def convert_to_nx(self, adjacency_attr: str = "G"):
+
+        A = getattr(self.cg, adjacency_attr).graph
+        n = A.shape[0]
+        Gnx = nx.DiGraph()
+        # add nodes
+        for name in self.var_names:
+            Gnx.add_node(name)
+        # add edges
+        for i in range(n):
+            for j in range(n):
+                if A[i, j] == 1 and A[j, i] == -1:
+                    Gnx.add_edge(self.var_names[i], self.var_names[j])
+                elif A[i, j] == 1 and A[j, i] == 1:
+                    Gnx.add_edge(self.var_names[i], self.var_names[j])
+                    Gnx.add_edge(self.var_names[j], self.var_names[i])
+        return Gnx
+
+    def plot_graphviz(self, Gnx: nx.DiGraph, edge_labels: dict = None):
+        dot = Digraph(comment="Causal Graph", format="png")
+        dot.graph_attr["dpi"] = "200"
+        dot.attr(rankdir="TB", size="16,20")  # top→bottom layout
+
+        # Global node styling
+        dot.attr(
+            "node",
+            shape="ellipse",
+            style="filled",
+            fillcolor="white",
+            fontname="Helvetica",
+            fontsize="12",
+            margin="0.3,0.3",
+        )
+
+        # Global edge styling
+        dot.attr(
+            "edge",
+            color="black",
+            arrowsize="1.2",
+            fontname="Helvetica",
+            fontsize="12",
+        )
+
+        # Add nodes
+        for node in Gnx.nodes():
+            dot.node(node)
+
+        # Add edges (with optional labels)
+        for u, v in Gnx.edges():
+            if edge_labels and (u, v) in edge_labels:
+                label = str(edge_labels[(u, v)])
+                dot.edge(u, v, label=label)
+            else:
+                dot.edge(u, v)
+
+        # Output
+        out_path = os.path.join(self.out_dir, "causal_graph")
+        dot.render(filename=out_path, cleanup=True)
+        print(f"Saved Graphviz graph to {out_path}.png")
