@@ -96,26 +96,41 @@ class CausalDiscovery:
 
     def convert_to_nx(self, adjacency_attr: str = "G"):
 
-        A = getattr(self.cg, adjacency_attr).graph
+        if not adjacency_attr:
+            A = getattr(self.cg, adjacency_attr).graph
+        else:
+            A = getattr(self.cg, adjacency_attr)
         n = A.shape[0]
         Gnx = nx.DiGraph()
         # add nodes
         for name in self.var_names:
             Gnx.add_node(name)
         # add edges
-        for i in range(n):
-            for j in range(n):
-                if A[i, j] == 1 and A[j, i] == -1:
-                    Gnx.add_edge(self.var_names[i], self.var_names[j])
-                elif A[i, j] == 1 and A[j, i] == 1:
-                    Gnx.add_edge(self.var_names[i], self.var_names[j])
-                    Gnx.add_edge(self.var_names[j], self.var_names[i])
+        unique_vals = set(np.unique(A))
+        if unique_vals.issubset({-1, 0, 1}):
+            for i in range(n):
+                for j in range(n):
+                    if A[i, j] == 1 and A[j, i] == -1:
+                        Gnx.add_edge(self.var_names[i], self.var_names[j])
+                    elif A[i, j] == 1 and A[j, i] == 1:
+                        Gnx.add_edge(self.var_names[i], self.var_names[j])
+                        Gnx.add_edge(self.var_names[j], self.var_names[i])
+        else:
+            for i in range(n):
+                for j in range(n):
+                    w = A[i, j]
+                    if abs(w) >= 0.01:
+                        Gnx.add_edge(
+                            self.var_names[i], self.var_names[j], weight=w
+                        )
         return Gnx
 
-    def plot_graphviz(self, Gnx: nx.DiGraph, edge_labels: dict = None):
+    def plot_graphviz(
+        self, Gnx: nx.DiGraph, edge_labels: dict = None, name=None
+    ):
         dot = Digraph(comment="Causal Graph", format="png")
         dot.graph_attr["dpi"] = "200"
-        dot.attr(rankdir="TB", size="16,20")  # top→bottom layout
+        dot.attr(rankdir="TB", size="64,80")  # top→bottom layout
 
         # Global node styling
         dot.attr(
@@ -150,6 +165,9 @@ class CausalDiscovery:
                 dot.edge(u, v)
 
         # Output
-        out_path = os.path.join(self.out_dir, "causal_graph")
+        if not name:
+            out_path = os.path.join(self.out_dir, "causal_graph")
+        else:
+            out_path = os.path.join(self.out_dir, "causal_graph" + name)
         dot.render(filename=out_path, cleanup=True)
         print(f"Saved Graphviz graph to {out_path}.png")

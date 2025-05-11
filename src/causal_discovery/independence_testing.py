@@ -23,4 +23,4 @@ def main(gene_file, output_folder):
 
 
 if __name__ == "__main__":
-    main("results/lasso/lasso_genes.txt", "results/lasso")
+    main("results/rf/random_forest_genes.txt", "results/rf")
