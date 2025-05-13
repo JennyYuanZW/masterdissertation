@@ -2,6 +2,7 @@
 src/feature_selection/__pycache__/
 venv/ env/
 src/causal_discovery/__pycache__/
+src/causal_discovery/GNN/__pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -15,3 +16,5 @@ adata_balanced.h5ad
 
 #logs
 training_log_rf.txt
+src/causal_discovery/GNN/results/
+src/causal_discovery/GNN/wandb
