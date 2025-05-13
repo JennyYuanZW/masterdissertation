@@ -18,3 +18,4 @@ adata_balanced.h5ad
 training_log_rf.txt
 src/causal_discovery/GNN/results/
 src/causal_discovery/GNN/wandb
+wandb
