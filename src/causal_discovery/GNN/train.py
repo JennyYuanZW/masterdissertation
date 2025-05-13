@@ -35,7 +35,7 @@ parser.add_argument(
 parser.add_argument(
     "--data_filename",
     type=str,
-    default="gene_expression_gb.csv",
+    default="gene_expression_lasso.csv",
     help="data file name containing the gene expression",
 )
 
@@ -143,7 +143,7 @@ parser.add_argument(
 parser.add_argument(
     "--save-folder",
     type=str,
-    default="results/gb",
+    default="results/lasso",
     help="Where to save the trained model, leave empty to not save anything.",
 )
 
