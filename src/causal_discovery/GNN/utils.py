@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data.dataset import TensorDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.autograd import Variable
@@ -165,18 +165,30 @@ def load_data(args, batch_size=1000, suffix="", debug=False):
     X = df.to_numpy().astype(np.float32)
     X = np.expand_dims(X, axis=-1)
     data_variable_size = data.shape[1]
-    feat_train = torch.FloatTensor(X)
-    feat_valid = torch.FloatTensor(X)
-    feat_test = torch.FloatTensor(X)
 
-    # reconstruct itself
-    train_data = TensorDataset(feat_train, feat_train)
-    valid_data = TensorDataset(feat_valid, feat_train)
-    test_data = TensorDataset(feat_test, feat_train)
+    feat = torch.from_numpy(X)
+    full_ds = TensorDataset(feat, feat)
 
-    train_data_loader = DataLoader(train_data, batch_size=batch_size)
-    valid_data_loader = DataLoader(valid_data, batch_size=batch_size)
-    test_data_loader = DataLoader(test_data, batch_size=batch_size)
+    total_len = len(full_ds)
+    train_len = int(0.8 * total_len)
+    valid_len = int(0.1 * total_len)
+    test_len = total_len - train_len - valid_len
+
+    train_ds, valid_ds, test_ds = random_split(
+        full_ds,
+        [train_len, valid_len, test_len],
+        generator=torch.Generator().manual_seed(42),
+    )
+
+    train_data_loader = DataLoader(
+        train_ds, batch_size=batch_size, shuffle=True
+    )
+    valid_data_loader = DataLoader(
+        valid_ds, batch_size=batch_size, shuffle=False
+    )
+    test_data_loader = DataLoader(
+        test_ds, batch_size=batch_size, shuffle=False
+    )
 
     return (
         train_data_loader,

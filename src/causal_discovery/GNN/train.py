@@ -35,7 +35,7 @@ parser.add_argument(
 parser.add_argument(
     "--data_filename",
     type=str,
-    default="gene_expression_lasso.csv",
+    default="gene_expression_gb.csv",
     help="data file name containing the gene expression",
 )
 
@@ -143,7 +143,7 @@ parser.add_argument(
 parser.add_argument(
     "--save-folder",
     type=str,
-    default="results/lasso",
+    default="results/gb",
     help="Where to save the trained model, leave empty to not save anything.",
 )
 
@@ -396,7 +396,7 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
         loss = loss_kl + loss_nll
 
         # add A loss
-        one_adj_A = origin_A  # torch.mean(adj_A_tilt_decoder, dim =0)
+        one_adj_A = origin_A
         sparse_loss = args.tau_A * torch.sum(torch.abs(one_adj_A))
 
         # other loss term
@@ -440,10 +440,41 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
         kl_train.append(loss_kl.item())
 
     print(h_A.item())
+    nll_test = []
+    kl_test = []
+    mse_test = []
     nll_val = []
-    acc_val = []
-    kl_val = []
-    mse_val = []
+
+    with torch.no_grad():
+        for data, relations in test_loader:
+            if args.cuda:
+                data, relations = data.cuda(), relations.cuda()
+            data = Variable(data).double()
+
+            # forward on validation batch
+            _, logits, origin_A, adj_e, _, _, _, Wa = encoder(
+                data, rel_rec, rel_send
+            )
+            _, output, _ = decoder(
+                data,
+                logits,
+                data_variable_size * args.x_dims,
+                rel_rec,
+                rel_send,
+                origin_A,
+                adj_e,
+                Wa,
+            )
+
+            # compute val losses
+            loss_nll_test = nll_gaussian(output, data, variance=0.0)
+            loss_kl_test = kl_gaussian_sem(logits)
+            mse_test.append(F.mse_loss(output, data).item())
+            nll_test.append(loss_nll_test.item())
+            kl_test.append(loss_kl_test.item())
+            nll = np.array(nll_test)
+            kl = np.array(kl_test)
+            mean_test_elbo = np.mean(nll + kl)
 
     print(
         "Epoch: {:04d}".format(epoch),
@@ -451,6 +482,9 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
         "kl_train: {:.10f}".format(np.mean(kl_train)),
         "ELBO_loss: {:.10f}".format(np.mean(kl_train) + np.mean(nll_train)),
         "mse_train: {:.10f}".format(np.mean(mse_train)),
+        "nll_test:   {:.10f}".format(np.mean(nll_test)),
+        "kl_test:    {:.10f}".format(np.mean(kl_test)),
+        "mse_test:   {:.10f}".format(np.mean(mse_test)),
         "time: {:.4f}s".format(time.time() - t),
     )
     if args.save_folder and np.mean(nll_val) < best_val_loss:
@@ -479,6 +513,7 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
         np.mean(mse_train),
         graph,
         origin_A,
+        mean_test_elbo,
     )
 
 
@@ -501,12 +536,19 @@ h_A_new = torch.tensor(1.0)
 h_tol = args.h_tol
 k_max_iter = int(args.k_max_iter)
 h_A_old = np.inf
-
+best_test_loss = np.inf
 try:
     for step_k in range(k_max_iter):
         while c_A < 1e20:
             for epoch in range(args.epochs):
-                ELBO_loss, NLL_loss, MSE_loss, graph, origin_A = train(
+                (
+                    ELBO_loss,
+                    NLL_loss,
+                    MSE_loss,
+                    graph,
+                    origin_A,
+                    mean_test_elbo,
+                ) = train(
                     epoch,
                     best_ELBO_loss,
                     lambda_A,
@@ -519,6 +561,7 @@ try:
                         "ELBO_loss": ELBO_loss,
                         "NLL_loss": NLL_loss,
                         "MSE_loss": MSE_loss,
+                        "best_test_elbo": mean_test_elbo,
                     }
                 )
                 if ELBO_loss < best_ELBO_loss:
@@ -535,6 +578,8 @@ try:
                     best_MSE_loss = MSE_loss
                     best_epoch = epoch
                     best_MSE_graph = graph
+                if best_test_loss < mean_test_elbo:
+                    best_test_loss = mean_test_elbo
 
             print("Optimization Finished!")
             print("Best Epoch: {:04d}".format(best_epoch))
@@ -566,11 +611,11 @@ except KeyboardInterrupt:
     print(best_ELBO_graph)
     print(nx.to_numpy_array(ground_truth_G))
 
-f1 = open("predG", "w")
-matG1 = np.matrix(origin_A.data.clone().numpy())
-for line in matG1:
-    np.savetxt(f1, line, fmt="%.5f")
-f1.closed
+# f1 = open("predG_gb_test", "w")
+# matG1 = np.matrix(origin_A.data.clone().numpy())
+# for line in matG1:
+#     np.savetxt(f1, line, fmt="%.5f")
+# f1.closed
 
 
 if log is not None:
