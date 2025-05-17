@@ -24,8 +24,9 @@ def main(gene_file, output_folder):
         for j in range(num_vars)
         if A[i, j] != 0
     }
-    causal_data.plot_graphviz(Gnx, edge_labels=edge_labels, name="LINGAM")
+    causal_data.plot_graphviz(Gnx, edge_labels=edge_labels, name="LINGAM2")
+    print(causal_data.compute_hubs_bottlenecks(Gnx, 3))
 
 
 if __name__ == "__main__":
-    main("results/lasso/lasso_genes.txt", "results/lasso")
+    main("results/gb/gb_genes.txt", "results/gb")

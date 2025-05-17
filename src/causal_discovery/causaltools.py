@@ -90,13 +90,13 @@ class CausalDiscovery:
         )
         # call the causal method, unpack kwargs
         self.cg = method_func(**kwargs)
-        Gnx = self.convert_to_nx()
-        self.plot_graphviz(Gnx, edge_labels=None)
+        self.Gnx = self.convert_to_nx()
+        self.plot_graphviz(self.Gnx, edge_labels=None)
         return self.cg
 
     def convert_to_nx(self, adjacency_attr: str = "G"):
 
-        if not adjacency_attr:
+        if adjacency_attr == "G":
             A = getattr(self.cg, adjacency_attr).graph
         else:
             A = getattr(self.cg, adjacency_attr)
@@ -124,6 +124,26 @@ class CausalDiscovery:
                             self.var_names[i], self.var_names[j], weight=w
                         )
         return Gnx
+
+    def compute_hubs_bottlenecks(self, Gnx, top_n: int = 3):
+        # Degree‐based hubs
+        out_deg_centrality = nx.out_degree_centrality(Gnx)
+        top_hubs = [
+            name
+            for name, _ in sorted(
+                out_deg_centrality.items(), key=lambda x: x[1], reverse=True
+            )[:top_n]
+        ]
+        # Bottlenecks
+        btw_centrality = nx.betweenness_centrality(Gnx, normalized=True)
+        top_bottlenecks = [
+            name
+            for name, _ in sorted(
+                btw_centrality.items(), key=lambda x: x[1], reverse=True
+            )[:top_n]
+        ]
+
+        return {"hubs": top_hubs, "bottlenecks": top_bottlenecks}
 
     def plot_graphviz(
         self, Gnx: nx.DiGraph, edge_labels: dict = None, name=None

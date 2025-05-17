@@ -20,7 +20,8 @@ def main(gene_file, output_folder):
         pc, {"alpha": 0.05, "indep_test": "fisherz", "stable": True}
     )
     print(cg.G.graph)
+    print(causal_data.compute_hubs_bottlenecks(causal_data.Gnx, 5))
 
 
 if __name__ == "__main__":
-    main("results/rf/random_forest_genes.txt", "results/rf")
+    main("results/lasso/lasso_genes.txt", "results/lasso")
