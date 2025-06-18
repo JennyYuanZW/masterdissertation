@@ -125,6 +125,15 @@ class CausalDiscovery:
                         )
         return Gnx
 
+    def save_adjacency_matrix(self, filename: str, adjacency_attr: str = "G"):
+        if adjacency_attr == "G":
+            A = getattr(self.cg, adjacency_attr).graph
+        else:
+            A = getattr(self.cg, adjacency_attr)
+
+        np.save(filename, A)
+        print(f"Adjacency matrix saved.")
+
     def compute_hubs_bottlenecks(self, Gnx, top_n: int = 3):
         # Degree‐based hubs
         out_deg_centrality = nx.out_degree_centrality(Gnx)

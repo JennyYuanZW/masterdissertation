@@ -35,7 +35,7 @@ parser.add_argument(
 parser.add_argument(
     "--data_filename",
     type=str,
-    default="gene_expression_gb.csv",
+    default="gene_expression_rf.csv",
     help="data file name containing the gene expression",
 )
 
@@ -143,7 +143,7 @@ parser.add_argument(
 parser.add_argument(
     "--save-folder",
     type=str,
-    default="results/gb",
+    default="results/rf",
     help="Where to save the trained model, leave empty to not save anything.",
 )
 
@@ -611,11 +611,11 @@ except KeyboardInterrupt:
     print(best_ELBO_graph)
     print(nx.to_numpy_array(ground_truth_G))
 
-# f1 = open("predG_gb_test", "w")
-# matG1 = np.matrix(origin_A.data.clone().numpy())
-# for line in matG1:
-#     np.savetxt(f1, line, fmt="%.5f")
-# f1.closed
+f1 = open("predG_rf_test", "w")
+matG1 = np.matrix(origin_A.data.clone().numpy())
+for line in matG1:
+    np.savetxt(f1, line, fmt="%.5f")
+f1.closed
 
 
 if log is not None:

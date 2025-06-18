@@ -18,15 +18,16 @@ def main(gene_file, output_folder):
     column_names = causal_data.var_names
     num_vars = len(column_names)
     A = causal_data.cg.adjacency_matrix_
+    # causal_data.save_adjacency_matrix("LINGAM", "adjacency_matrix_")
     edge_labels = {
         (column_names[i], column_names[j]): f"{A[i, j]:.2f}"
         for i in range(num_vars)
         for j in range(num_vars)
         if A[i, j] != 0
     }
-    causal_data.plot_graphviz(Gnx, edge_labels=edge_labels, name="LINGAM2")
-    print(causal_data.compute_hubs_bottlenecks(Gnx, 3))
+    # causal_data.plot_graphviz(Gnx, edge_labels=edge_labels, name="LINGAM")
+    print(causal_data.compute_hubs_bottlenecks(Gnx, 10))
 
 
 if __name__ == "__main__":
-    main("results/gb/gb_genes.txt", "results/gb")
+    main("results/rf/random_forest_genes.txt", "results/rf")

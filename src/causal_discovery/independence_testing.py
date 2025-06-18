@@ -19,9 +19,10 @@ def main(gene_file, output_folder):
     cg = causal_data.run(
         pc, {"alpha": 0.05, "indep_test": "fisherz", "stable": True}
     )
+    causal_data.save_adjacency_matrix("IT", "G")
     print(cg.G.graph)
     print(causal_data.compute_hubs_bottlenecks(causal_data.Gnx, 5))
 
 
 if __name__ == "__main__":
-    main("results/lasso/lasso_genes.txt", "results/lasso")
+    main("results/gb/gb_genes.txt", "results/gb")

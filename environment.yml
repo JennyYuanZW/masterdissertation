@@ -1,0 +1,25 @@
+name: causal_discovery
+
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pytorch
+  - torchvision 
+  - torchaudio
+
+  - wandb
+
+  - numpy
+  - matplotlib
+  - scikit-learn
+  - pandas
+  - anndata
+  - networkx
+  - causallearn
+  - graphviz
+
+
